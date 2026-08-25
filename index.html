@@ -23,7 +23,6 @@
   }
   :root { --header-h: 0px; }
   header {
-    position: sticky; top: 0; z-index: 5;
     background: var(--bg);
     border-bottom: 1px solid var(--line);
     padding: 14px 18px 12px;
@@ -115,10 +114,10 @@
     <input type="search" id="q" placeholder="Search player or team">
     <div class="pills" id="pos">
       <button class="pill on" data-pos="ALL">All</button>
-      <button class="pill" data-pos="QB">QB</button>
-      <button class="pill" data-pos="RB">RB</button>
-      <button class="pill" data-pos="WR">WR</button>
-      <button class="pill" data-pos="TE">TE</button>
+      <button class="pill on" data-pos="QB">QB</button>
+      <button class="pill on" data-pos="RB">RB</button>
+      <button class="pill on" data-pos="WR">WR</button>
+      <button class="pill on" data-pos="TE">TE</button>
     </div>
     <label class="hide"><input type="checkbox" id="hideTaken" checked> Hide drafted</label>
     <span class="count" id="count"></span>
@@ -137,16 +136,16 @@
   <thead>
     <tr>
       <th data-key="rank"># <span class="dir">▾</span></th>
-      <th data-key="player">Player</th>
-      <th data-key="pos">Pos</th>
-      <th data-key="avg" class="num">Avg</th>
-      <th class="sub" data-key="FL">FL <small class="no">not TEP</small></th>
-      <th class="sub" data-key="KTC">KTC <small>TEP</small></th>
-      <th class="sub" data-key="SI">SI <small class="no">not TEP</small></th>
-      <th class="sub" data-key="FO">FO <small>TEP</small></th>
-      <th class="sub" data-key="DN">DN <small class="no">not TEP</small></th>
-      <th class="sub" data-key="FP">FP <small class="no">not TEP</small></th>
-      <th class="sub" data-key="DS">DS <small>TEP</small></th>
+      <th data-key="player">Player <span class="dir"></span></th>
+      <th data-key="pos">Pos <span class="dir"></span></th>
+      <th data-key="avg" class="num">Avg <span class="dir"></span></th>
+      <th class="sub" data-key="FL">FL <small class="no">not TEP</small> <span class="dir"></span></th>
+      <th class="sub" data-key="KTC">KTC <small>TEP</small> <span class="dir"></span></th>
+      <th class="sub" data-key="SI">SI <small class="no">not TEP</small> <span class="dir"></span></th>
+      <th class="sub" data-key="FO">FO <small>TEP</small> <span class="dir"></span></th>
+      <th class="sub" data-key="DN">DN <small class="no">not TEP</small> <span class="dir"></span></th>
+      <th class="sub" data-key="FP">FP <small class="no">not TEP</small> <span class="dir"></span></th>
+      <th class="sub" data-key="DS">DS <small>TEP</small> <span class="dir"></span></th>
     </tr>
   </thead>
   <tbody id="body"></tbody>
@@ -156,7 +155,7 @@ const DATA = [{"rank": 1, "player": "Bijan Robinson", "pos": "RB", "team": "ATL"
 const CURRENT_PICK = 45;
 const COLOR_SWING = 20;
 const SRCS = ["FL","KTC","SI","FO","DN","FP","DS"];
-let pos = "ALL";
+let posOn = new Set(["QB","RB","WR","TE"]);
 let hideTaken = true;
 let sortKey = "rank";
 let sortDir = 1;
@@ -174,7 +173,7 @@ function rankColor(v) {
 function rows() {
   const needle = q.trim().toLowerCase();
   let list = DATA.filter(r => {
-    if (pos !== "ALL" && r.pos !== pos) return false;
+    if (posOn.size && posOn.size < 4 && !posOn.has(r.pos)) return false;
     if (hideTaken && r.taken && !r.mine) return false;
     if (needle && !(r.player.toLowerCase().includes(needle) || (r.team||"").toLowerCase().includes(needle))) return false;
     return true;
@@ -219,11 +218,25 @@ pinHeader();
 window.addEventListener("resize", pinHeader);
 document.getElementById("q").addEventListener("input", e => { q = e.target.value; render(); });
 document.getElementById("hideTaken").addEventListener("change", e => { hideTaken = e.target.checked; render(); });
+function syncPills() {
+  const all = posOn.size === 4;
+  document.querySelectorAll(".pill").forEach(x => {
+    const k = x.dataset.pos;
+    x.classList.toggle("on", k === "ALL" ? all : posOn.has(k));
+  });
+}
 document.getElementById("pos").addEventListener("click", e => {
   const b = e.target.closest(".pill");
   if (!b) return;
-  pos = b.dataset.pos;
-  document.querySelectorAll(".pill").forEach(x => x.classList.toggle("on", x === b));
+  const k = b.dataset.pos;
+  if (k === "ALL") {
+    if (posOn.size === 4) posOn.clear();
+    else posOn = new Set(["QB","RB","WR","TE"]);
+  } else {
+    if (posOn.has(k)) posOn.delete(k);
+    else posOn.add(k);
+  }
+  syncPills();
   render();
 });
 document.querySelectorAll("th").forEach(th => {
@@ -232,7 +245,8 @@ document.querySelectorAll("th").forEach(th => {
     if (sortKey === k) sortDir *= -1;
     else { sortKey = k; sortDir = 1; }
     document.querySelectorAll("th .dir").forEach(d => d.textContent = "");
-    th.querySelector(".dir").textContent = sortDir === 1 ? "▾" : "▴";
+    const arrow = th.querySelector(".dir");
+    if (arrow) arrow.textContent = sortDir === 1 ? "▾" : "▴";
     render();
   });
 });
