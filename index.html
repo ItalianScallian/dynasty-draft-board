@@ -57,7 +57,7 @@
   .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
   table { width: 100%; border-collapse: collapse; }
   th {
-    position: sticky; top: 118px;
+    position: sticky; top: 168px;
     background: #151c23;
     text-align: left;
     font-size: 11px;
@@ -89,12 +89,28 @@
   }
   .dash { color: #4a5560; }
   .count { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .src {
+    font-size: 11px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    border-radius: 6px;
+    padding: 3px 7px;
+    color: var(--muted);
+  }
+  .src b { color: var(--text); font-weight: 650; }
+  .src.tep { border-color: #3d6b4f; background: #163322; color: #b7e0c4; }
+  .src.tep b { color: #d8f3e2; }
+  .src .tag { color: #7ddea0; font-weight: 700; }
+  th.sub { font-size: 10px; line-height: 1.2; }
+  th.sub small { display: block; color: #6a8f74; font-weight: 600; text-transform: none; letter-spacing: 0; }
+  th.sub small.no { color: #6d7a88; font-weight: 500; }
 </style>
 </head>
 <body>
 <header>
   <h1>1QB TEP dynasty board</h1>
-  <div class="sub">Unweighted average of 7 boards · Aug 24, 2026 · RotoBaller out (not TEP). Click a header to sort. Green = boards love him, red = they don’t.</div>
+  <div class="sub">Unweighted average. Colors scale to the players currently on screen (remaining, unless you show drafted). Green = best of what’s left on that board.</div>
   <div class="controls">
     <input type="search" id="q" placeholder="Search player or team">
     <div class="pills" id="pos">
@@ -107,11 +123,14 @@
     <label class="hide"><input type="checkbox" id="hideTaken" checked> Hide drafted</label>
     <span class="count" id="count"></span>
   </div>
-  <div class="legend">
-    <span class="sw" style="background:#1b7f4a"></span> lower / better rank
-    &nbsp;&nbsp;
-    <span class="sw" style="background:#b33a3a"></span> higher / colder
-    &nbsp;&nbsp; gold row = your team &nbsp;·&nbsp; FL Fantasy Life · KTC 1QB TE+ · SI · FO TEP ADP · DN Nerds · FP FantasyPros · DS Draft Sharks TEP
+  <div class="sources">
+    <span class="src tep"><b>KTC</b> <span class="tag">TEP</span> · pulled Aug 24</span>
+    <span class="src tep"><b>FO</b> <span class="tag">TEP</span> ADP · pulled Aug 24</span>
+    <span class="src tep"><b>DS</b> <span class="tag">TEP</span> · site Aug 24 11:30am PT</span>
+    <span class="src"><b>FL</b> not TEP · pulled Aug 24</span>
+    <span class="src"><b>SI</b> not TEP · pulled Aug 24</span>
+    <span class="src"><b>DN</b> not TEP · pulled Aug 24</span>
+    <span class="src"><b>FP</b> not TEP · ECR Aug 23</span>
   </div>
 </header>
 <table>
@@ -121,13 +140,13 @@
       <th data-key="player">Player</th>
       <th data-key="pos">Pos</th>
       <th data-key="avg" class="num">Avg</th>
-      <th data-key="FL">FL</th>
-      <th data-key="KTC">KTC</th>
-      <th data-key="SI">SI</th>
-      <th data-key="FO">FO</th>
-      <th data-key="DN">DN</th>
-      <th data-key="FP">FP</th>
-      <th data-key="DS">DS</th>
+      <th class="sub" data-key="FL">FL <small class="no">not TEP</small></th>
+      <th class="sub" data-key="KTC">KTC <small>TEP</small></th>
+      <th class="sub" data-key="SI">SI <small class="no">not TEP</small></th>
+      <th class="sub" data-key="FO">FO <small>TEP</small></th>
+      <th class="sub" data-key="DN">DN <small class="no">not TEP</small></th>
+      <th class="sub" data-key="FP">FP <small class="no">not TEP</small></th>
+      <th class="sub" data-key="DS">DS <small>TEP</small></th>
     </tr>
   </thead>
   <tbody id="body"></tbody>
@@ -141,9 +160,18 @@ let sortKey = "rank";
 let sortDir = 1;
 let q = "";
 
-function rankColor(v) {
+function valOf(r, col) {
+  if (col === "avg") return r.avg;
+  if (col in (r.ranks || {})) return r.ranks[col];
+  return r[col];
+}
+function rankColor(v, col, list) {
   if (v == null) return "";
-  const t = Math.max(0, Math.min(1, (v - 1) / 79));
+  const vals = list.map(r => valOf(r, col)).filter(x => x != null && typeof x === "number");
+  if (!vals.length) return "";
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  const t = hi === lo ? 0 : (v - lo) / (hi - lo);
   const h = 145 - t * 145;
   const s = 55;
   const l = 28 + t * 6;
@@ -178,13 +206,13 @@ function render() {
     const cells = SRCS.map(s => {
       const v = r.ranks[s];
       if (v == null) return `<td class="cell dash">—</td>`;
-      return `<td class="cell" style="${rankColor(v)}">${v}</td>`;
+      return `<td class="cell" style="${rankColor(v, s, list)}">${v}</td>`;
     }).join("");
     return `<tr class="${cls}">
       <td class="num">${r.rank}</td>
       <td>${r.player}${r.mine ? " · you" : ""}</td>
       <td class="pos ${r.pos}">${r.pos}</td>
-      <td class="num">${r.avg.toFixed(1)}</td>
+      <td class="num cell" style="${rankColor(r.avg, "avg", list)}">${r.avg.toFixed(1)}</td>
       ${cells}
     </tr>`;
   }).join("");
