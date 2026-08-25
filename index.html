@@ -21,6 +21,7 @@
     background: var(--bg);
     color: var(--text);
   }
+  :root { --header-h: 0px; }
   header {
     position: sticky; top: 0; z-index: 5;
     background: var(--bg);
@@ -57,7 +58,7 @@
   .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; }
   table { width: 100%; border-collapse: collapse; }
   th {
-    position: sticky; top: 168px;
+    position: sticky; top: var(--header-h, 0px);
     background: #151c23;
     text-align: left;
     font-size: 11px;
@@ -211,6 +212,12 @@ function render() {
   }).join("");
 }
 
+function pinHeader() {
+  const h = document.querySelector("header");
+  if (h) document.documentElement.style.setProperty("--header-h", h.offsetHeight + "px");
+}
+pinHeader();
+window.addEventListener("resize", pinHeader);
 document.getElementById("q").addEventListener("input", e => { q = e.target.value; render(); });
 document.getElementById("hideTaken").addEventListener("change", e => { hideTaken = e.target.checked; render(); });
 document.getElementById("pos").addEventListener("click", e => {
